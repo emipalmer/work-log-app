@@ -95,12 +95,53 @@ sends the selected notes to the AI provider.
 
 ---
 
+## Main screen layout (MVP)
+
+The primary screen is a **split workspace** with three regions:
+
+```
+┌──┬──────────────────────────────────────┬───────────────────┐
+│  │  Top bar: views · dates · stats       │                   │
+│N ├───────────────────┬──────────────────┤                   │
+│a │  [Mon]   [Tue]    │   [Wed]  [Thu]   │                   │
+│v │                   │                  │   AI OUTPUT        │
+│  │  [Fri]   [Sat]    │   [Sun]          │   (resume, STAR,   │
+│r │                   │                  │    brag, skills)   │
+│a │  [ +log ]   Stats │                  │                   │
+│i │                   │                  │                   │
+│l │  (weekly log grid)                   │   (edit & save)    │
+└──┴──────────────────────────────────────┴───────────────────┘
+```
+
+1. **Left nav rail** (slim, full-height, far left): persistent icon navigation to
+   move between views — weekly log, generated content, overall stats/dashboard,
+   settings.
+
+2. **Top bar** (spans the workspace): controls for the current view — switch views,
+   navigate which **dates/week** I'm looking at (prev/next week, date picker), and
+   a button to open **overall stats**.
+
+3. **Main content — two side-by-side panels:**
+   - **Left/center — weekly log grid:** a card per day of the week (Mon–Sun) where
+     I log what I did that day. Clicking a day opens its freeform entry (with the
+     suggestion chips). A **Stats tile** sits alongside the day cards showing quick
+     metrics for the week (entries logged, streak, projects touched, wins captured).
+   - **Right — AI output panel:** where generated content appears (resume bullets,
+     STAR stories, brag doc, skills inventory) and where I edit and save it. Kept
+     visible next to the logs so I can generate from what I see on the left.
+
+Should collapse gracefully on narrower screens (panels stack; nav rail becomes a
+menu) since the app is browser-based and may be used on smaller windows.
+
 ## Suggested MVP scope
 
 **Build first:**
 - Account sign-up / login
-- Create, edit, and browse daily log entries (freeform + suggestion chips)
-- Generate **resume bullets** and **STAR stories** from a date range
+- The split-workspace layout above (nav rail, top bar, weekly log grid + AI panel)
+- Create, edit, and browse daily log entries via the weekly grid (freeform + chips)
+- Weekly navigation and a stats tile (entries, streak, projects)
+- Generate **resume bullets** and **STAR stories** from a date range, shown in the
+  right-hand AI output panel
 - Save/edit generated outputs
 
 **Add next:**
