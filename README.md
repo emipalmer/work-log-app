@@ -25,14 +25,14 @@ hint instead.
 ## Layout
 
 ```
-┌──┬──────────────────────────────────┬───────────────────┐
-│  │ Top bar: week nav · dates · stats │                   │
-│N ├──────────────────────────────────┤   AI OUTPUT       │
-│a │  Mon   Tue                        │   resume bullets  │
-│v │  Wed   Thu                        │   STAR stories    │
-│  │  Fri   Sat                        │   brag doc        │
-│  │  Sun   [Stats]                    │   skills          │
-└──┴──────────────────────────────────┴───────────────────┘
+┌──┬───────────────────┬──────────────────────────────────┐
+│  │                   │ Top bar: week nav · dates · stats │
+│N │   AI OUTPUT       ├──────────────────────────────────┤
+│a │   resume bullets  │  Mon   Tue                        │
+│v │   STAR stories    │  Wed   Thu                        │
+│  │   brag doc        │  Fri   Sat                        │
+│  │   skills          │  Sun   [Stats]                    │
+└──┴───────────────────┴──────────────────────────────────┘
 ```
 
 - **Nav rail** — weekly log, generated content library, overall stats

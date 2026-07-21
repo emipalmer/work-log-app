@@ -141,8 +141,9 @@ export default function WeekView() {
         </div>
       </main>
 
-      {/* Right: AI output panel */}
-      <aside className="lg:w-[400px] xl:w-[440px] shrink-0 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 lg:h-screen lg:overflow-hidden flex flex-col min-h-[420px]">
+      {/* Left (after nav rail): AI output panel. DOM order keeps the log grid
+          first on mobile stacking; lg:order-first moves the panel left on desktop. */}
+      <aside className="lg:order-first lg:w-[400px] xl:w-[440px] shrink-0 bg-white border-t lg:border-t-0 lg:border-r border-gray-200 lg:h-screen lg:overflow-hidden flex flex-col min-h-[420px]">
         <AiPanel monday={monday} />
       </aside>
 

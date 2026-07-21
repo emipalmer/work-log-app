@@ -100,17 +100,17 @@ sends the selected notes to the AI provider.
 The primary screen is a **split workspace** with three regions:
 
 ```
-┌──┬──────────────────────────────────────┬───────────────────┐
-│  │  Top bar: views · dates · stats       │                   │
-│N ├───────────────────┬──────────────────┤                   │
-│a │  [Mon]   [Tue]    │   [Wed]  [Thu]   │                   │
-│v │                   │                  │   AI OUTPUT        │
-│  │  [Fri]   [Sat]    │   [Sun]          │   (resume, STAR,   │
-│r │                   │                  │    brag, skills)   │
-│a │  [ +log ]   Stats │                  │                   │
-│i │                   │                  │                   │
-│l │  (weekly log grid)                   │   (edit & save)    │
-└──┴──────────────────────────────────────┴───────────────────┘
+┌──┬───────────────────┬──────────────────────────────────────┐
+│  │                   │  Top bar: views · dates · stats       │
+│N │                   ├───────────────────┬──────────────────┤
+│a │   AI OUTPUT       │  [Mon]   [Tue]    │   [Wed]  [Thu]   │
+│v │   (resume, STAR,  │                   │                  │
+│  │    brag, skills)  │  [Fri]   [Sat]    │   [Sun]          │
+│r │                   │                   │                  │
+│a │                   │  [ +log ]   Stats │                  │
+│i │                   │                   │                  │
+│l │   (edit & save)   │  (weekly log grid)                   │
+└──┴───────────────────┴──────────────────────────────────────┘
 ```
 
 1. **Left nav rail** (slim, full-height, far left): persistent icon navigation to
@@ -122,13 +122,14 @@ The primary screen is a **split workspace** with three regions:
    a button to open **overall stats**.
 
 3. **Main content — two side-by-side panels:**
-   - **Left/center — weekly log grid:** a card per day of the week (Mon–Sun) where
+   - **Left — AI output panel** (right after the nav rail): where generated content
+     appears (resume bullets, STAR stories, brag doc, skills inventory) and where I
+     edit and save it. Kept visible next to the logs so I can generate from what I
+     see alongside.
+   - **Right/center — weekly log grid:** a card per day of the week (Mon–Sun) where
      I log what I did that day. Clicking a day opens its freeform entry (with the
      suggestion chips). A **Stats tile** sits alongside the day cards showing quick
      metrics for the week (entries logged, streak, projects touched, wins captured).
-   - **Right — AI output panel:** where generated content appears (resume bullets,
-     STAR stories, brag doc, skills inventory) and where I edit and save it. Kept
-     visible next to the logs so I can generate from what I see on the left.
 
 Should collapse gracefully on narrower screens (panels stack; nav rail becomes a
 menu) since the app is browser-based and may be used on smaller windows.
