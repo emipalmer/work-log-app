@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { dayOfMonth, monthShort, WEEKDAYS, weekDates, mondayOf } from "@/lib/dates";
+import { dayOfMonth, mondayOf, monthShort, WEEKDAYS, weekDates } from "@/lib/dates";
 import type { Entry } from "./StatsTile";
 
 const CHIPS = [
-  { label: "✅ Shipped", insert: "**Shipped:** " },
-  { label: "🏆 Win", insert: "**Win:** " },
-  { label: "🧗 Challenge", insert: "**Challenge:** " },
-  { label: "🛠️ Skills used", insert: "**Skills used:** " },
-  { label: "📊 Impact / metrics", insert: "**Impact:** " },
+  { label: "Shipped", insert: "**Shipped:** " },
+  { label: "Win", insert: "**Win:** " },
+  { label: "Challenge", insert: "**Challenge:** " },
+  { label: "Skills used", insert: "**Skills used:** " },
+  { label: "Impact / metrics", insert: "**Impact:** " },
 ];
 
 export default function DayEditor({
@@ -28,11 +28,11 @@ export default function DayEditor({
   const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
   const dirty = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const closeRef = useRef<() => void>(() => {});
 
   const weekdayIdx = weekDates(mondayOf(date)).indexOf(date);
   const title = `${WEEKDAYS[weekdayIdx]}, ${monthShort(date)} ${dayOfMonth(date)}`;
 
-  // Debounced autosave while typing.
   useEffect(() => {
     if (!dirty.current) return;
     const t = setTimeout(async () => {
@@ -40,26 +40,25 @@ export default function DayEditor({
       await onSave(date, body, project);
       dirty.current = false;
       setStatus("saved");
-    }, 900);
+    }, 800);
     return () => clearTimeout(t);
   }, [body, project, date, onSave]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") void close();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [body, project]);
-
-  async function close() {
+  closeRef.current = async () => {
     if (dirty.current) {
       await onSave(date, body, project);
       dirty.current = false;
     }
     onClose();
-  }
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") void closeRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   function addChip(insert: string) {
     setBody((b) => (b.trim() ? b.replace(/\s*$/, "") + "\n\n" : "") + insert);
@@ -70,14 +69,14 @@ export default function DayEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) void close();
+        if (e.target === e.currentTarget) void closeRef.current();
       }}
     >
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl p-6">
-        <div className="flex items-center justify-between gap-4 mb-3">
-          <h2 className="font-bold text-lg">{title}</h2>
+      <div className="w-full max-w-xl rounded-2xl border border-line bg-surface p-6 shadow-xl">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <h2 className="text-[17px] font-bold text-ink">{title}</h2>
           <input
             value={project}
             onChange={(e) => {
@@ -86,16 +85,16 @@ export default function DayEditor({
               setStatus("idle");
             }}
             placeholder="Project tag (optional)"
-            className="w-48 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="field w-48 !py-1.5"
           />
         </div>
 
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        <div className="mb-3 flex flex-wrap gap-1.5">
           {CHIPS.map((chip) => (
             <button
               key={chip.label}
               onClick={() => addChip(chip.insert)}
-              className="text-xs rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 hover:bg-indigo-50 hover:border-indigo-300"
+              className="pill border-line bg-canvas text-ink-2 hover:border-accent hover:bg-accent-soft hover:text-accent"
             >
               {chip.label}
             </button>
@@ -113,17 +112,14 @@ export default function DayEditor({
             setStatus("idle");
           }}
           placeholder="What did you do today? Brain-dump freely — wins, blockers, numbers, people you helped, anything worth remembering at review time."
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+          className="field resize-y leading-relaxed"
         />
 
-        <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-gray-400">
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[11.5px] text-ink-3">
             {status === "saving" ? "Saving…" : status === "saved" ? "Saved ✓" : "Autosaves as you type"}
           </span>
-          <button
-            onClick={() => void close()}
-            className="rounded-lg bg-indigo-600 text-white px-4 py-2 text-sm font-medium hover:bg-indigo-700"
-          >
+          <button onClick={() => void closeRef.current()} className="btn-primary">
             Done
           </button>
         </div>

@@ -45,7 +45,7 @@ export default function Markdown({ text }: { text: string }) {
   const flushTable = () => {
     if (table.length === 0) return;
     blocks.push(
-      <pre key={`tbl-${blocks.length}`} className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-x-auto">
+      <pre key={`tbl-${blocks.length}`} className="text-xs bg-sunken border border-line rounded-lg p-3 overflow-x-auto">
         {table.join("\n")}
       </pre>,
     );
@@ -96,5 +96,5 @@ export default function Markdown({ text }: { text: string }) {
   flushList();
   flushTable();
 
-  return <div className="space-y-2 text-sm text-gray-800">{blocks}</div>;
+  return <div className="space-y-2 text-sm text-ink">{blocks}</div>;
 }

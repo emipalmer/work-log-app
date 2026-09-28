@@ -5,12 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 
 const ITEMS = [
   {
-    href: "/week",
-    label: "Weekly log",
+    href: "/workspace",
+    label: "Workspace",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-        <rect x="3" y="4" width="18" height="17" rx="2" />
-        <path d="M3 9h18M8 2v4M16 2v4" />
+      <svg viewBox="0 0 20 20" fill="none" className="h-[18px] w-[18px]" aria-hidden>
+        <rect x="2" y="3" width="16" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M9 3v14M9 10h9" stroke="currentColor" strokeWidth="1.6" />
       </svg>
     ),
   },
@@ -18,9 +18,8 @@ const ITEMS = [
     href: "/outputs",
     label: "Generated content",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-        <path d="M12 3l1.7 4.6L18 9.3l-4.3 1.7L12 15.6l-1.7-4.6L6 9.3l4.3-1.7L12 3z" />
-        <path d="M19 14l.9 2.4L22 17.3l-2.1.9L19 20.6l-.9-2.4-2.1-.9 2.1-.9L19 14z" />
+      <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" aria-hidden>
+        <path d="M10 2l1.6 5.4L17 9l-5.4 1.6L10 16l-1.6-5.4L3 9l5.4-1.6z" fill="currentColor" />
       </svg>
     ),
   },
@@ -28,8 +27,13 @@ const ITEMS = [
     href: "/stats",
     label: "Overall stats",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-        <path d="M4 20V10M10 20V4M16 20v-7M21 20H3" />
+      <svg viewBox="0 0 20 20" fill="none" className="h-[18px] w-[18px]" aria-hidden>
+        <path
+          d="M4 16V9M10 16V4M16 16v-5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
       </svg>
     ),
   },
@@ -46,10 +50,14 @@ export default function NavRail({ email }: { email: string }) {
   }
 
   return (
-    <nav className="w-14 shrink-0 bg-slate-700 flex flex-col items-center py-3 gap-1">
-      <div className="text-lg mb-2" title="WorkLog">
-        📓
-      </div>
+    <nav className="flex w-[60px] shrink-0 flex-col items-center gap-2 bg-rail py-3.5">
+      <Link
+        href="/workspace"
+        className="mb-1.5 grid h-[34px] w-[34px] place-items-center rounded-[9px] bg-accent text-[17px] font-bold text-white"
+        title="WorkLog"
+      >
+        W
+      </Link>
       {ITEMS.map((item) => {
         const active = pathname.startsWith(item.href);
         return (
@@ -57,10 +65,10 @@ export default function NavRail({ email }: { email: string }) {
             key={item.href}
             href={item.href}
             title={item.label}
-            className={`p-2.5 rounded-lg transition-colors ${
-              active
-                ? "bg-slate-500/60 text-white"
-                : "text-slate-300 hover:bg-slate-600 hover:text-white"
+            aria-label={item.label}
+            aria-current={active ? "page" : undefined}
+            className={`grid h-9 w-9 place-items-center rounded-[9px] transition-colors ${
+              active ? "bg-white/15 text-white" : "text-white/55 hover:bg-rail-hover hover:text-white"
             }`}
           >
             {item.icon}
@@ -71,10 +79,17 @@ export default function NavRail({ email }: { email: string }) {
       <button
         onClick={logout}
         title={`Sign out (${email})`}
-        className="p-2.5 rounded-lg text-slate-300 hover:bg-slate-600 hover:text-white"
+        aria-label="Sign out"
+        className="grid h-9 w-9 place-items-center rounded-[9px] text-white/55 transition-colors hover:bg-rail-hover hover:text-white"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+        <svg viewBox="0 0 20 20" fill="none" className="h-[18px] w-[18px]" aria-hidden>
+          <path
+            d="M8 17H5a2 2 0 01-2-2V5a2 2 0 012-2h3M13 14l4-4-4-4M17 10H8"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </button>
     </nav>

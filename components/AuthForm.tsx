@@ -36,34 +36,34 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <div className="text-center mb-6">
           <div className="text-3xl mb-1">📓</div>
           <h1 className="text-2xl font-bold">WorkLog</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-ink-2 mt-1">
             Log your workdays. Turn them into resume material.
           </p>
         </div>
-        <form onSubmit={submit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+        <form onSubmit={submit} className="bg-surface rounded-xl shadow-sm border border-line p-6 space-y-4">
           <h2 className="font-semibold text-lg">
             {mode === "login" ? "Sign in" : "Create your account"}
           </h2>
           <label className="block">
-            <span className="text-sm text-gray-600">Email</span>
+            <span className="text-sm text-ink-2">Email</span>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               placeholder="you@example.com"
             />
           </label>
           <label className="block">
-            <span className="text-sm text-gray-600">Password</span>
+            <span className="text-sm text-ink-2">Password</span>
             <input
               type="password"
               required
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="mt-1 w-full rounded-lg border border-line px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               placeholder={mode === "signup" ? "At least 8 characters" : "••••••••"}
             />
           </label>
@@ -71,22 +71,22 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="w-full rounded-lg bg-accent text-white py-2 text-sm font-medium hover:bg-accent-hover disabled:opacity-50"
           >
             {busy ? "One moment…" : mode === "login" ? "Sign in" : "Sign up"}
           </button>
-          <p className="text-sm text-gray-500 text-center">
+          <p className="text-sm text-ink-2 text-center">
             {mode === "login" ? (
               <>
                 No account?{" "}
-                <Link href="/signup" className="text-indigo-600 hover:underline">
+                <Link href="/signup" className="text-accent hover:underline">
                   Sign up
                 </Link>
               </>
             ) : (
               <>
                 Already have an account?{" "}
-                <Link href="/login" className="text-indigo-600 hover:underline">
+                <Link href="/login" className="text-accent hover:underline">
                   Sign in
                 </Link>
               </>

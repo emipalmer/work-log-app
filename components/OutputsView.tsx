@@ -63,14 +63,15 @@ export default function OutputsView() {
   }
 
   return (
-    <div className="p-4 max-w-3xl">
+    <div className="scroll-area h-full overflow-y-auto p-5">
+      <div className="mx-auto max-w-3xl">
       <h1 className="font-bold text-lg mb-4">Generated content</h1>
 
-      {artifacts === null && <p className="text-sm text-gray-400">Loading…</p>}
+      {artifacts === null && <p className="text-sm text-ink-3">Loading…</p>}
       {artifacts?.length === 0 && (
-        <div className="text-sm text-gray-400 bg-white border border-dashed border-gray-300 rounded-xl p-8 text-center">
+        <div className="text-sm text-ink-3 bg-surface border border-dashed border-line rounded-xl p-8 text-center">
           Nothing saved yet. Generate resume bullets or STAR stories from the{" "}
-          <a href="/week" className="text-indigo-600 hover:underline">
+          <a href="/week" className="text-accent hover:underline">
             weekly log
           </a>{" "}
           and hit <b>Save</b>.
@@ -82,7 +83,7 @@ export default function OutputsView() {
           const open = openId === a.id;
           const editing = editingId === a.id;
           return (
-            <div key={a.id} className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div key={a.id} className="bg-surface rounded-xl border border-line shadow-sm">
               <button
                 onClick={() => setOpenId(open ? null : a.id)}
                 className="w-full flex items-center gap-2 px-4 py-3 text-left"
@@ -91,34 +92,34 @@ export default function OutputsView() {
                   {ARTIFACT_LABELS[a.type]}
                 </span>
                 {a.start_date && a.end_date && (
-                  <span className="text-xs text-gray-500">{rangeLabel(a.start_date, a.end_date)}</span>
+                  <span className="text-xs text-ink-2">{rangeLabel(a.start_date, a.end_date)}</span>
                 )}
-                {a.edited === 1 && <span className="text-[11px] text-gray-400">(edited)</span>}
+                {a.edited === 1 && <span className="text-[11px] text-ink-3">(edited)</span>}
                 <span className="flex-1" />
-                <span className="text-xs text-gray-400">{a.created_at.slice(0, 10)}</span>
-                <span className="text-gray-400 text-xs">{open ? "▲" : "▼"}</span>
+                <span className="text-xs text-ink-3">{a.created_at.slice(0, 10)}</span>
+                <span className="text-ink-3 text-xs">{open ? "▲" : "▼"}</span>
               </button>
 
               {open && (
-                <div className="border-t border-gray-100 px-4 py-3">
+                <div className="border-t border-line px-4 py-3">
                   {editing ? (
                     <>
                       <textarea
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         rows={14}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded-lg border border-line px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent"
                       />
                       <div className="flex gap-2 mt-2">
                         <button
                           onClick={() => saveEdit(a.id)}
-                          className="rounded-lg bg-indigo-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-indigo-700"
+                          className="rounded-lg bg-accent text-white px-3 py-1.5 text-xs font-medium hover:bg-accent-hover"
                         >
                           Save changes
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50"
+                          className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-sunken"
                         >
                           Cancel
                         </button>
@@ -133,13 +134,13 @@ export default function OutputsView() {
                             setEditingId(a.id);
                             setDraft(a.content);
                           }}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50"
+                          className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-sunken"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => copy(a)}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50"
+                          className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-sunken"
                         >
                           {copiedId === a.id ? "Copied ✓" : "Copy"}
                         </button>
@@ -159,5 +160,6 @@ export default function OutputsView() {
         })}
       </div>
     </div>
+      </div>
   );
 }
