@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import db from "@/lib/db";
 import { getUser } from "@/lib/auth";
 import { DATE_RE } from "@/lib/dates";
@@ -9,8 +8,7 @@ import {
   buildUserMessage,
   type ArtifactType,
 } from "@/lib/prompts";
-
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
+import { CLAUDE_MODEL, claudeErrorResponse, getClaudeClient, NO_CREDENTIALS } from "@/lib/claude";
 
 export const maxDuration = 300; // generation can take a while at high effort
 
@@ -45,19 +43,12 @@ export async function POST(req: Request) {
     );
   }
 
-  let client: Anthropic;
-  try {
-    client = new Anthropic();
-  } catch {
-    return NextResponse.json(
-      { error: "Claude API credentials are not configured. Add ANTHROPIC_API_KEY to .env.local and restart the server." },
-      { status: 503 },
-    );
-  }
+  const client = getClaudeClient();
+  if (!client) return NO_CREDENTIALS;
 
   try {
     const stream = client.messages.stream({
-      model: MODEL,
+      model: CLAUDE_MODEL,
       max_tokens: 64000,
       thinking: { type: "adaptive" },
       system: buildSystemPrompt(type),
@@ -80,40 +71,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ content, type, start, end, sourceCount: entries.length });
   } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError) {
-      return NextResponse.json(
-        { error: "Claude API key is invalid. Check ANTHROPIC_API_KEY in .env.local." },
-        { status: 503 },
-      );
-    }
-    if (error instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { error: "Rate limited by the Claude API. Wait a moment and try again." },
-        { status: 429 },
-      );
-    }
-    if (error instanceof Anthropic.APIConnectionError) {
-      return NextResponse.json(
-        { error: "Could not reach the Claude API. Check your network connection." },
-        { status: 502 },
-      );
-    }
-    if (error instanceof Anthropic.APIError) {
-      return NextResponse.json(
-        { error: `Claude API error: ${error.message}` },
-        { status: 502 },
-      );
-    }
-    // Client-side SDK errors (e.g. no credentials resolved at request time).
-    if (error instanceof Anthropic.AnthropicError) {
-      if (/authentication method|api.?key/i.test(error.message)) {
-        return NextResponse.json(
-          { error: "Claude API credentials are not configured. Add ANTHROPIC_API_KEY to .env.local and restart the server." },
-          { status: 503 },
-        );
-      }
-      return NextResponse.json({ error: error.message }, { status: 502 });
-    }
+    const mapped = claudeErrorResponse(error);
+    if (mapped) return mapped;
     throw error;
   }
 }
