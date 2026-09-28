@@ -1,6 +1,94 @@
 @import "tailwindcss";
 
-:root {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+/* ---------------------------------------------------------------
+   Crisp productivity design tokens.
+   Mirrors the Figma direction: near-white surfaces, hairline borders,
+   one saturated iris accent, tight Inter type.
+   --------------------------------------------------------------- */
+@theme {
+  --color-canvas: #f7f7f8;
+  --color-workspace: #ededf0;
+  --color-surface: #ffffff;
+  --color-sunken: #fafafb;
+  --color-paper: #ececef;
+
+  --color-line: #e5e5ea;
+  --color-line-strong: #dcdce2;
+
+  --color-rail: #36364a;
+  --color-rail-hover: #43435a;
+
+  --color-accent: #5b5bd6;
+  --color-accent-hover: #4e4ec9;
+  --color-accent-soft: #efeefb;
+  --color-accent-line: #d1cff5;
+
+  --color-ink: #18181b;
+  --color-ink-2: #68686f;
+  --color-ink-3: #a1a1aa;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --radius-card: 12px;
+  --radius-panel: 10px;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+  }
+  /* Inputs inherit the type system rather than UA defaults. */
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+  ::selection {
+    background: var(--color-accent-soft);
+  }
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-[13px]
+           text-ink placeholder:text-ink-3 outline-none transition
+           focus:border-accent focus:ring-2 focus:ring-accent/15;
+  }
+  /* Tailwind v4 cannot @apply another custom class, so each button spells
+     out its own base utilities rather than composing a shared `.btn`. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg
+           bg-accent px-3 py-2 text-[12.5px] font-semibold text-white
+           transition hover:bg-accent-hover disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg
+           border border-line bg-surface px-3 py-2 text-[12.5px] font-medium
+           text-ink-2 transition hover:bg-canvas disabled:opacity-50;
+  }
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition;
+  }
+  /* Thin, unobtrusive scrollbars inside panels. */
+  .scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: #d4d4d8 transparent;
+  }
+  .scroll-area::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .scroll-area::-webkit-scrollbar-thumb {
+    background: #d4d4d8;
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
 }
