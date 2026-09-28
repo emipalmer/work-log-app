@@ -1,5 +1,6 @@
-import WeekView from "@/components/WeekView";
+import { redirect } from "next/navigation";
 
+// The weekly grid now lives as a panel inside the workspace.
 export default function WeekPage() {
-  return <WeekView />;
+  redirect("/workspace");
 }

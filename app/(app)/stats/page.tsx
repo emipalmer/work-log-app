@@ -71,35 +71,36 @@ export default async function StatsPage() {
   ];
 
   return (
-    <div className="p-4 max-w-3xl">
+    <div className="scroll-area h-full overflow-y-auto p-5">
+      <div className="mx-auto max-w-3xl">
       <h1 className="font-bold text-lg mb-1">Overall stats</h1>
-      <p className="text-xs text-gray-400 mb-4">
+      <p className="text-xs text-ink-3 mb-4">
         {first && last ? `Logging since ${rangeLabel(first, last).split("–")[0].trim()}` : "No entries yet — start logging from the weekly view."}
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         {bigStats.map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <div key={s.label} className="bg-surface rounded-xl border border-line shadow-sm p-4">
             <div className="text-2xl font-bold">{s.value}</div>
-            <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+            <div className="text-xs text-ink-2 mt-0.5">{s.label}</div>
           </div>
         ))}
       </div>
 
       {topProjects.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
-          <h2 className="font-semibold text-sm text-gray-700 mb-3">Entries by project</h2>
+        <div className="bg-surface rounded-xl border border-line shadow-sm p-4 mb-6">
+          <h2 className="font-semibold text-sm text-ink mb-3">Entries by project</h2>
           <div className="space-y-2">
             {topProjects.map(([name, n]) => (
               <div key={name} className="flex items-center gap-2">
-                <span className="text-xs w-32 truncate text-gray-600">{name}</span>
-                <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                <span className="text-xs w-32 truncate text-ink-2">{name}</span>
+                <div className="flex-1 bg-canvas rounded-full h-2 overflow-hidden">
                   <div
-                    className="bg-indigo-500 h-full rounded-full"
+                    className="bg-accent-soft0 h-full rounded-full"
                     style={{ width: `${(n / topProjects[0][1]) * 100}%` }}
                   />
                 </div>
-                <span className="text-xs text-gray-400 w-6 text-right">{n}</span>
+                <span className="text-xs text-ink-3 w-6 text-right">{n}</span>
               </div>
             ))}
           </div>
@@ -107,11 +108,11 @@ export default async function StatsPage() {
       )}
 
       {artifactCounts.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-          <h2 className="font-semibold text-sm text-gray-700 mb-3">Saved outputs</h2>
+        <div className="bg-surface rounded-xl border border-line shadow-sm p-4">
+          <h2 className="font-semibold text-sm text-ink mb-3">Saved outputs</h2>
           <div className="flex flex-wrap gap-2">
             {artifactCounts.map((a) => (
-              <span key={a.type} className="text-xs bg-gray-50 border border-gray-200 rounded-full px-3 py-1">
+              <span key={a.type} className="text-xs bg-sunken border border-line rounded-full px-3 py-1">
                 {ARTIFACT_LABELS[a.type]} · <b>{a.n}</b>
               </span>
             ))}
@@ -119,5 +120,6 @@ export default async function StatsPage() {
         </div>
       )}
     </div>
+      </div>
   );
 }
