@@ -1,28 +1,8 @@
-// Minimal Markdown renderer for generated content: headings, bullets, bold,
-// italics, and pipe-tables (rendered monospace). No external dependencies.
+// Minimal Markdown block renderer for generated content: headings, bullets,
+// and pipe-tables (rendered monospace). Inline formatting is delegated to the
+// shared parser in lib/markdown.ts. No external dependencies.
 
-import { Fragment } from "react";
-
-function inline(text: string, keyPrefix: string): React.ReactNode[] {
-  // Split on **bold** first, then _italic_ inside the plain segments.
-  const nodes: React.ReactNode[] = [];
-  const boldParts = text.split(/\*\*(.+?)\*\*/g);
-  boldParts.forEach((part, i) => {
-    if (i % 2 === 1) {
-      nodes.push(<strong key={`${keyPrefix}-b${i}`}>{part}</strong>);
-    } else {
-      const italicParts = part.split(/_(.+?)_/g);
-      italicParts.forEach((seg, j) => {
-        if (j % 2 === 1) {
-          nodes.push(<em key={`${keyPrefix}-i${i}-${j}`}>{seg}</em>);
-        } else if (seg) {
-          nodes.push(<Fragment key={`${keyPrefix}-t${i}-${j}`}>{seg}</Fragment>);
-        }
-      });
-    }
-  });
-  return nodes;
-}
+import { InlineMarkdown } from "./MarkdownInline";
 
 export default function Markdown({ text }: { text: string }) {
   const lines = text.split("\n");
@@ -35,7 +15,7 @@ export default function Markdown({ text }: { text: string }) {
     blocks.push(
       <ul key={`ul-${blocks.length}`} className="list-disc pl-5 space-y-1">
         {list.map((item, i) => (
-          <li key={i}>{inline(item, `li-${blocks.length}-${i}`)}</li>
+          <li key={i}><InlineMarkdown text={item} /></li>
         ))}
       </ul>,
     );
@@ -79,7 +59,7 @@ export default function Markdown({ text }: { text: string }) {
           : "text-sm font-semibold mt-3 first:mt-0";
       blocks.push(
         <h3 key={`h-${idx}`} className={cls}>
-          {inline(heading[2], `h-${idx}`)}
+          <InlineMarkdown text={heading[2]} />
         </h3>,
       );
       return;
@@ -89,7 +69,7 @@ export default function Markdown({ text }: { text: string }) {
 
     blocks.push(
       <p key={`p-${idx}`} className="leading-relaxed">
-        {inline(trimmed, `p-${idx}`)}
+        <InlineMarkdown text={trimmed} />
       </p>,
     );
   });

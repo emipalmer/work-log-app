@@ -12,6 +12,7 @@ import {
   weekDates,
   WEEKDAYS,
 } from "@/lib/dates";
+import { MarkdownPreview } from "@/components/MarkdownInline";
 import DayEditor from "./DayEditor";
 import StatsTile, { type Entry } from "./StatsTile";
 
@@ -125,9 +126,11 @@ export default function WorkLogPanel({
                         {entry.project_tag}
                       </span>
                     )}
-                    <p className="line-clamp-4 whitespace-pre-line text-[11.5px] leading-[16px] text-ink-2">
-                      {entry.body}
-                    </p>
+                    <MarkdownPreview
+                      text={entry.body}
+                      maxLines={5}
+                      className="line-clamp-4 text-[11.5px] leading-[16px] text-ink-2"
+                    />
                   </>
                 ) : (
                   <span className="mt-1 text-[11.5px] text-ink-3">＋ Log this day</span>
