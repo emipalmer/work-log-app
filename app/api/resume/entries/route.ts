@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getUser } from "@/lib/auth";
-import { ENTRY_KINDS, getOrCreateResume, type EntryKind } from "@/lib/resume";
+import {
+  ENTRY_KINDS,
+  getOrCreateResume,
+  parseIdList,
+  reorderEntries,
+  type EntryKind,
+} from "@/lib/resume";
 
 export async function POST(req: Request) {
   const user = await getUser();
@@ -27,4 +33,27 @@ export async function POST(req: Request) {
     .run(resume.id, kind, next.pos);
 
   return NextResponse.json({ id: Number(info.lastInsertRowid) }, { status: 201 });
+}
+
+/** Reorder one section: `ids` is every entry of that kind, in the new order. */
+export async function PATCH(req: Request) {
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  const kind = body?.kind as EntryKind;
+  if (!ENTRY_KINDS.includes(kind)) {
+    return NextResponse.json({ error: "Unknown section." }, { status: 400 });
+  }
+  const ids = parseIdList(body?.ids);
+  if (!ids) return NextResponse.json({ error: "ids must be a list of entry ids." }, { status: 400 });
+
+  const resume = getOrCreateResume(user.id, user.email);
+  if (!reorderEntries(resume.id, kind, ids)) {
+    return NextResponse.json(
+      { error: "That order is out of date — reload and try again." },
+      { status: 409 },
+    );
+  }
+  return NextResponse.json({ ok: true });
 }

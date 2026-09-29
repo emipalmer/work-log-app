@@ -116,6 +116,49 @@ export function bulletOwner(bulletId: number): number | null {
   return r ? r.userId : null;
 }
 
+/** A list of positive integer ids, or null when the body isn't one. */
+export function parseIdList(raw: unknown): number[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const ids = raw.map(Number);
+  return ids.every((n) => Number.isInteger(n) && n > 0) ? ids : null;
+}
+
+/** True when `ids` lists exactly what's stored, in some order. */
+function isPermutation(stored: number[], ids: number[]): boolean {
+  if (stored.length !== ids.length) return false;
+  const remaining = new Set(stored);
+  // delete() fails on both an id we don't own and a duplicate of one we do.
+  return ids.every((id) => remaining.delete(id));
+}
+
+/** Renumber positions to match `ids`.
+ *  `ids` has to be a permutation of what's stored: a short list, a duplicate,
+ *  or an id from another resume means the client is working from a stale view,
+ *  and writing it would scramble the order rather than change it. Returning
+ *  false lets the route answer 409 and the client reload. */
+export function reorderEntries(resumeId: number, kind: EntryKind, ids: number[]): boolean {
+  const stored = db
+    .prepare("SELECT id FROM resume_entries WHERE resume_id = ? AND kind = ?")
+    .all(resumeId, kind) as { id: number }[];
+  if (!isPermutation(stored.map((r) => r.id), ids)) return false;
+
+  const update = db.prepare("UPDATE resume_entries SET position = ? WHERE id = ?");
+  db.transaction(() => ids.forEach((id, i) => update.run(i, id)))();
+  return true;
+}
+
+/** Renumber bullet positions within one entry. See reorderEntries. */
+export function reorderBullets(entryId: number, ids: number[]): boolean {
+  const stored = db
+    .prepare("SELECT id FROM resume_bullets WHERE entry_id = ?")
+    .all(entryId) as { id: number }[];
+  if (!isPermutation(stored.map((r) => r.id), ids)) return false;
+
+  const update = db.prepare("UPDATE resume_bullets SET position = ? WHERE id = ?");
+  db.transaction(() => ids.forEach((id, i) => update.run(i, id)))();
+  return true;
+}
+
 function section(r: Resume, kind: EntryKind): ResumeEntry[] {
   return r.entries.filter((e) => e.kind === kind);
 }

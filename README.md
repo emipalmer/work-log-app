@@ -62,6 +62,11 @@ bullets grounded in the log entries for a date range; you review them in a tray
 and add the ones you want. Accepted bullets are tagged so you can see what came
 from your logs versus what you wrote.
 
+**Order** — what goes first matters on a resume, so entries and bullets are
+rankable. Drag an entry chip or a bullet's grip to move it, or focus a grip and
+press ↑ / ↓; the entry's **Order** buttons do the same from the keyboard. The
+live preview and both exports follow the order you set.
+
 **Export** — *Copy as text* puts ATS-friendly plain text on the clipboard.
 *Export to Google Doc* copies rich HTML and opens a blank Google Doc to paste
 into (no Google OAuth required).

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { addDays, mondayOf, rangeLabel, todayISO } from "@/lib/dates";
+import { moveById, moveItem } from "@/lib/reorder";
 import {
   ENTRY_KINDS,
   ORG_LABEL,
   SECTION_TITLE,
   TITLE_LABEL,
   type EntryKind,
+  type ResumeBullet,
 } from "@/lib/resume-types";
 import { useResume } from "./ResumeProvider";
 
@@ -30,6 +32,114 @@ function Sparkle({ className = "" }: { className?: string }) {
     <svg width="12" height="12" viewBox="0 0 12 12" className={className} aria-hidden>
       <path d="M6 0l1.3 4.7L12 6l-4.7 1.3L6 12l-1.3-4.7L0 6l4.7-1.3z" fill="currentColor" />
     </svg>
+  );
+}
+
+/** Drag payloads are namespaced so the panel-swap handler in PanelFrame
+ *  ignores them and a bullet can't be dropped onto an entry chip. */
+const DND_BULLET = "application/x-worklog-bullet";
+const DND_ENTRY = "application/x-worklog-entry";
+
+function Grip({ className = "" }: { className?: string }) {
+  return (
+    <svg width="9" height="13" viewBox="0 0 9 13" className={className} aria-hidden>
+      {[1, 5.5, 10].map((y) =>
+        [0.5, 4.5].map((x) => (
+          <circle key={`${x}-${y}`} cx={x + 1.2} cy={y + 1.2} r="1.2" fill="currentColor" />
+        )),
+      )}
+    </svg>
+  );
+}
+
+/** Read a namespaced id off a drag event, or null when it carries something else. */
+function draggedId(e: React.DragEvent, type: string): number | null {
+  if (!e.dataTransfer.types.includes(type)) return null;
+  const id = Number(e.dataTransfer.getData(type));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+/** One achievement row: grip (drag or arrow keys), text, remove. */
+function BulletRow({
+  bullet,
+  onChange,
+  onRemove,
+  onMove,
+  onDropBefore,
+}: {
+  bullet: ResumeBullet;
+  onChange: (text: string) => void;
+  onRemove: () => void;
+  onMove: (delta: number) => void;
+  onDropBefore: (draggedId: number) => void;
+}) {
+  const row = useRef<HTMLDivElement>(null);
+  const [over, setOver] = useState(false);
+
+  return (
+    <div
+      ref={row}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes(DND_BULLET)) {
+          e.preventDefault();
+          setOver(true);
+        }
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        const id = draggedId(e, DND_BULLET);
+        setOver(false);
+        if (id === null) return;
+        e.preventDefault();
+        if (id !== bullet.id) onDropBefore(id);
+      }}
+      className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 transition-colors ${
+        over
+          ? "border-accent ring-2 ring-accent/20"
+          : bullet.source === "ai"
+            ? "border-accent-line bg-accent-soft"
+            : "border-line bg-surface"
+      }`}
+    >
+      <button
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData(DND_BULLET, String(bullet.id));
+          e.dataTransfer.effectAllowed = "move";
+          // Drag the whole row, not just the handle.
+          if (row.current) e.dataTransfer.setDragImage(row.current, 14, 14);
+        }}
+        onKeyDown={(e) => {
+          const delta = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+          if (!delta) return;
+          e.preventDefault();
+          onMove(delta);
+        }}
+        title="Drag to reorder, or use ↑ / ↓"
+        aria-label="Reorder this bullet — drag it, or press the up and down arrow keys"
+        className="mt-1 cursor-grab rounded text-ink-3 hover:text-ink-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:cursor-grabbing"
+      >
+        <Grip />
+      </button>
+      {bullet.source === "ai" && (
+        <span className="mt-1 text-accent" title="Drafted from your logs">
+          <Sparkle />
+        </span>
+      )}
+      <textarea
+        rows={2}
+        className="min-h-[38px] flex-1 resize-y bg-transparent text-[12px] leading-[17px] text-ink-2 outline-none"
+        value={bullet.text}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        onClick={onRemove}
+        className="mt-0.5 text-ink-3 hover:text-red-600"
+        aria-label="Remove bullet"
+      >
+        ✕
+      </button>
+    </div>
   );
 }
 
@@ -59,6 +169,8 @@ export default function ResumeEditorPanel() {
     addBullet,
     addBullets,
     removeBullet,
+    reorderEntries,
+    reorderBullets,
   } = useResume();
 
   const [tab, setTab] = useState<Tab>("experience");
@@ -79,6 +191,32 @@ export default function ResumeEditorPanel() {
   const isEntryTab = (ENTRY_KINDS as string[]).includes(tab);
   const entries = isEntryTab ? resume.entries.filter((e) => e.kind === tab) : [];
   const active = entries.find((e) => e.id === selectedEntryId) ?? entries[0] ?? null;
+
+  // Reorder helpers work off the ids currently on screen; the provider sends the
+  // whole list so the server can reject an order built from a stale view.
+  const entryIds = entries.map((e) => e.id);
+  const bulletIds = active ? active.bullets.map((b) => b.id) : [];
+
+  function moveEntry(id: number, delta: number) {
+    const next = moveById(entryIds, id, delta);
+    if (next) reorderEntries(tab as EntryKind, next);
+  }
+  function dropEntry(dragged: number, target: number) {
+    const from = entryIds.indexOf(dragged);
+    const to = entryIds.indexOf(target);
+    if (from !== -1 && to !== -1) reorderEntries(tab as EntryKind, moveItem(entryIds, from, to));
+  }
+  function moveBullet(id: number, delta: number) {
+    if (!active) return;
+    const next = moveById(bulletIds, id, delta);
+    if (next) reorderBullets(active.id, next);
+  }
+  function dropBullet(dragged: number, target: number) {
+    if (!active) return;
+    const from = bulletIds.indexOf(dragged);
+    const to = bulletIds.indexOf(target);
+    if (from !== -1 && to !== -1) reorderBullets(active.id, moveItem(bulletIds, from, to));
+  }
 
   async function runSuggest() {
     if (!active) return;
@@ -211,13 +349,29 @@ export default function ResumeEditorPanel() {
               {entries.map((e) => (
                 <button
                   key={e.id}
+                  draggable
                   onClick={() => setSelectedEntryId(e.id)}
-                  className={`pill max-w-[220px] ${
+                  onDragStart={(ev) => {
+                    ev.dataTransfer.setData(DND_ENTRY, String(e.id));
+                    ev.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragOver={(ev) => {
+                    if (ev.dataTransfer.types.includes(DND_ENTRY)) ev.preventDefault();
+                  }}
+                  onDrop={(ev) => {
+                    const id = draggedId(ev, DND_ENTRY);
+                    if (id === null || id === e.id) return;
+                    ev.preventDefault();
+                    dropEntry(id, e.id);
+                  }}
+                  title="Click to edit · drag to reorder"
+                  className={`pill max-w-[220px] cursor-grab active:cursor-grabbing ${
                     active?.id === e.id
                       ? "border-accent bg-accent-soft font-medium text-accent"
                       : "border-line bg-surface text-ink-2 hover:bg-canvas"
                   }`}
                 >
+                  <Grip className="text-current opacity-40" />
                   <span className="truncate">{e.org.trim() || e.title.trim() || "Untitled"}</span>
                 </button>
               ))}
@@ -260,45 +414,50 @@ export default function ResumeEditorPanel() {
                       onChange={(e) => updateEntry(active.id, { title: e.target.value })}
                     />
                   </Labeled>
-                  <button
-                    onClick={() => removeEntry(active.id)}
-                    className="text-[12px] font-medium text-ink-3 hover:text-red-600"
-                  >
-                    Delete this entry
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className="mr-1 text-[11.5px] text-ink-3">Order</span>
+                      <button
+                        onClick={() => moveEntry(active.id, -1)}
+                        disabled={entryIds.indexOf(active.id) === 0}
+                        className="rounded-md border border-line bg-surface px-1.5 py-0.5 text-[12px] text-ink-2 transition hover:bg-canvas disabled:opacity-40"
+                        aria-label="Move this entry earlier"
+                        title="Move earlier"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={() => moveEntry(active.id, 1)}
+                        disabled={entryIds.indexOf(active.id) === entryIds.length - 1}
+                        className="rounded-md border border-line bg-surface px-1.5 py-0.5 text-[12px] text-ink-2 transition hover:bg-canvas disabled:opacity-40"
+                        aria-label="Move this entry later"
+                        title="Move later"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    <div className="flex-1" />
+                    <button
+                      onClick={() => removeEntry(active.id)}
+                      className="text-[12px] font-medium text-ink-3 hover:text-red-600"
+                    >
+                      Delete this entry
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <p className="mb-1.5 text-[11.5px] font-medium text-ink-2">Achievements</p>
                   <div className="space-y-2">
                     {active.bullets.map((b) => (
-                      <div
+                      <BulletRow
                         key={b.id}
-                        className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 ${
-                          b.source === "ai"
-                            ? "border-accent-line bg-accent-soft"
-                            : "border-line bg-surface"
-                        }`}
-                      >
-                        {b.source === "ai" && (
-                          <span className="mt-1 text-accent" title="Drafted from your logs">
-                            <Sparkle />
-                          </span>
-                        )}
-                        <textarea
-                          rows={2}
-                          className="min-h-[38px] flex-1 resize-y bg-transparent text-[12px] leading-[17px] text-ink-2 outline-none"
-                          value={b.text}
-                          onChange={(e) => updateBullet(b.id, e.target.value)}
-                        />
-                        <button
-                          onClick={() => removeBullet(b.id)}
-                          className="mt-0.5 text-ink-3 hover:text-red-600"
-                          aria-label="Remove bullet"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                        bullet={b}
+                        onChange={(text) => updateBullet(b.id, text)}
+                        onRemove={() => removeBullet(b.id)}
+                        onMove={(delta) => moveBullet(b.id, delta)}
+                        onDropBefore={(dragged) => dropBullet(dragged, b.id)}
+                      />
                     ))}
                   </div>
 

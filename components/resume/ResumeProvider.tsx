@@ -8,7 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { EntryKind, Resume } from "@/lib/resume-types";
+import { applyOrder } from "@/lib/reorder";
+import type { EntryKind, Resume, ResumeEntry } from "@/lib/resume-types";
 
 type HeaderPatch = Partial<
   Pick<Resume, "name" | "fullName" | "headline" | "email" | "location" | "links" | "summary">
@@ -31,6 +32,8 @@ type ResumeContextValue = {
   addBullet: (entryId: number, text: string) => Promise<void>;
   addBullets: (entryId: number, texts: string[], source: "manual" | "ai") => Promise<void>;
   removeBullet: (id: number) => Promise<void>;
+  reorderEntries: (kind: EntryKind, ids: number[]) => void;
+  reorderBullets: (entryId: number, ids: number[]) => void;
   refresh: () => Promise<void>;
 };
 
@@ -43,6 +46,17 @@ export function useResume(): ResumeContextValue {
 }
 
 const SAVE_DELAY = 600;
+
+/** Slot one section's entries back into the mixed `entries` array in the new
+ *  order, leaving the other sections where they are. */
+function withSectionOrder(entries: ResumeEntry[], kind: EntryKind, ids: number[]): ResumeEntry[] {
+  const ordered = applyOrder(
+    entries.filter((e) => e.kind === kind),
+    ids,
+  ).map((e, i) => ({ ...e, position: i }));
+  const queue = [...ordered];
+  return entries.map((e) => (e.kind === kind ? queue.shift()! : e));
+}
 
 export default function ResumeProvider({ children }: { children: React.ReactNode }) {
   const [resume, setResume] = useState<Resume | null>(null);
@@ -228,6 +242,50 @@ export default function ResumeProvider({ children }: { children: React.ReactNode
     [refresh],
   );
 
+  // Reordering is optimistic: the list snaps immediately and the save is
+  // debounced so a run of arrow-key presses collapses into one request. A
+  // rejected order (409, meaning our view was stale) resyncs from the server.
+  const saveOrder = useCallback(
+    (key: string, url: string, body: unknown) => {
+      queueSave(key, async () => {
+        const res = await patchJson(url, body);
+        if (!res.ok) await refresh();
+        return res;
+      });
+    },
+    [queueSave, refresh],
+  );
+
+  const reorderEntries = useCallback(
+    (kind: EntryKind, ids: number[]) => {
+      setResume((r) => (r ? { ...r, entries: withSectionOrder(r.entries, kind, ids) } : r));
+      saveOrder(`order:entries:${kind}`, "/api/resume/entries", { kind, ids });
+    },
+    [saveOrder],
+  );
+
+  const reorderBullets = useCallback(
+    (entryId: number, ids: number[]) => {
+      setResume((r) =>
+        r
+          ? {
+              ...r,
+              entries: r.entries.map((e) =>
+                e.id === entryId
+                  ? {
+                      ...e,
+                      bullets: applyOrder(e.bullets, ids).map((b, i) => ({ ...b, position: i })),
+                    }
+                  : e,
+              ),
+            }
+          : r,
+      );
+      saveOrder(`order:bullets:${entryId}`, "/api/resume/bullets", { entryId, ids });
+    },
+    [saveOrder],
+  );
+
   return (
     <ResumeContext.Provider
       value={{
@@ -246,6 +304,8 @@ export default function ResumeProvider({ children }: { children: React.ReactNode
         addBullet,
         addBullets,
         removeBullet,
+        reorderEntries,
+        reorderBullets,
         refresh,
       }}
     >

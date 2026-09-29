@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getUser } from "@/lib/auth";
-import { entryOwner } from "@/lib/resume";
+import { entryOwner, parseIdList, reorderBullets } from "@/lib/resume";
 
 export async function POST(req: Request) {
   const user = await getUser();
@@ -35,4 +35,26 @@ export async function POST(req: Request) {
   )(texts);
 
   return NextResponse.json({ ids }, { status: 201 });
+}
+
+/** Reorder an entry's achievements: `ids` is all of its bullets, in the new order. */
+export async function PATCH(req: Request) {
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  const entryId = Number(body?.entryId);
+  if (!Number.isInteger(entryId) || entryOwner(entryId) !== user.id) {
+    return NextResponse.json({ error: "Entry not found." }, { status: 404 });
+  }
+  const ids = parseIdList(body?.ids);
+  if (!ids) return NextResponse.json({ error: "ids must be a list of bullet ids." }, { status: 400 });
+
+  if (!reorderBullets(entryId, ids)) {
+    return NextResponse.json(
+      { error: "That order is out of date — reload and try again." },
+      { status: 409 },
+    );
+  }
+  return NextResponse.json({ ok: true });
 }
