@@ -41,7 +41,9 @@ Panels can be **dragged by their header to swap**, **resized** via the
 separators, **expanded** to fill the workspace, and **closed** — a closed panel
 comes back from the chips on the right of the layout bar. Two layouts ship
 built in (*Log + Resume*, *Focus: Resume*) and `＋` saves the current
-arrangement. Layout choices persist per browser.
+arrangement. **Layouts are saved to your account** — the arrangement, the
+separator positions, and your saved presets all follow you to any browser you
+sign in from.
 
 Four panels are available:
 

@@ -1,95 +1,91 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
+import {
+  ALL_PANELS,
+  BUILT_IN_LAYOUTS,
+  sameArrangement,
+  visiblePanels,
+  type PanelId,
+  type SavedLayout,
+  type WorkspaceLayout,
+} from "@/lib/workspace-types";
 import PanelFrame from "./PanelFrame";
 
-export type PanelId = "worklog" | "resume" | "editor" | "ai";
 export type PanelDef = { title: string; meta?: string; content: React.ReactNode };
 export type PanelMap = Record<PanelId, PanelDef>;
+export type { PanelId };
 
-/** One panel in the left column; the rest stack in the right column. */
-export type Layout = { left: PanelId | null; right: PanelId[] };
-
-type Preset = { id: string; label: string; layout: Layout; custom?: boolean };
-
-const BUILT_IN: Preset[] = [
-  { id: "log-resume", label: "Log + Resume", layout: { left: "worklog", right: ["resume", "editor"] } },
-  { id: "focus-resume", label: "Focus: Resume", layout: { left: "worklog", right: ["resume"] } },
-];
-
-const ALL_PANELS: PanelId[] = ["worklog", "resume", "editor", "ai"];
-const LAYOUT_KEY = "worklog:layout";
-const PRESETS_KEY = "worklog:presets";
-
-function visiblePanels(l: Layout): PanelId[] {
-  return [...(l.left ? [l.left] : []), ...l.right];
-}
-function sameLayout(a: Layout, b: Layout): boolean {
-  return a.left === b.left && a.right.length === b.right.length && a.right.every((p, i) => p === b.right[i]);
-}
+const SAVE_DELAY = 500;
 
 /** Sizes are strings: v4 reads bare numbers as pixels, strings as percentages. */
 function VSeparator() {
   return (
-    <Separator className="w-2.5 shrink-0 cursor-col-resize rounded-full bg-transparent transition-colors hover:bg-accent/25 data-[dragging]:bg-accent/40" />
+    <Separator className="w-2.5 shrink-0 cursor-col-resize rounded-full bg-transparent transition-colors hover:bg-accent/25" />
   );
 }
 function HSeparator() {
   return (
-    <Separator className="h-2.5 shrink-0 cursor-row-resize rounded-full bg-transparent transition-colors hover:bg-accent/25 data-[dragging]:bg-accent/40" />
+    <Separator className="h-2.5 shrink-0 cursor-row-resize rounded-full bg-transparent transition-colors hover:bg-accent/25" />
   );
 }
 
-export default function Workspace({ panels }: { panels: PanelMap }) {
-  const [layout, setLayout] = useState<Layout>(BUILT_IN[0].layout);
-  const [custom, setCustom] = useState<Preset[]>([]);
+/** Drop stored separator positions whose panels are no longer rendered. */
+function pickSizes(
+  sizes: Record<string, number> | undefined,
+  ids: string[],
+): Record<string, number> | undefined {
+  if (!sizes) return undefined;
+  const out: Record<string, number> = {};
+  for (const id of ids) if (typeof sizes[id] === "number") out[id] = sizes[id];
+  return Object.keys(out).length === ids.length ? out : undefined;
+}
+
+export default function Workspace({
+  panels,
+  initialLayout,
+  initialPresets,
+}: {
+  panels: PanelMap;
+  initialLayout: WorkspaceLayout;
+  initialPresets: SavedLayout[];
+}) {
+  const [layout, setLayout] = useState<WorkspaceLayout>(initialLayout);
+  const [presets, setPresets] = useState<SavedLayout[]>(initialPresets);
   const [maximized, setMaximized] = useState<PanelId | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firstRender = useRef(true);
 
-  // Restore from localStorage after mount so SSR markup matches the default.
+  // Persist the arrangement to the account, debounced so dragging a separator
+  // doesn't fire a request per frame.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LAYOUT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Layout;
-        const valid = (p: unknown): p is PanelId => ALL_PANELS.includes(p as PanelId);
-        if (parsed && Array.isArray(parsed.right)) {
-          setLayout({
-            left: valid(parsed.left) ? parsed.left : null,
-            right: parsed.right.filter(valid),
-          });
-        }
-      }
-      const rawPresets = localStorage.getItem(PRESETS_KEY);
-      if (rawPresets) setCustom(JSON.parse(rawPresets) as Preset[]);
-    } catch {
-      /* corrupt or unavailable storage — fall back to defaults */
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
     }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
-    } catch {
-      /* storage unavailable — layout simply won't persist */
-    }
-  }, [layout, hydrated]);
-
-  const persistPresets = useCallback((next: Preset[]) => {
-    setCustom(next);
-    try {
-      localStorage.setItem(PRESETS_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void fetch("/api/workspace/layout", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ layout }),
+      })
+        .then((res) => setError(res.ok ? null : "Layout could not be saved."))
+        .catch(() => setError("Layout could not be saved."));
+    }, SAVE_DELAY);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [layout]);
 
   const shown = visiblePanels(layout);
-  const hidden = ALL_PANELS.filter((p) => !shown.includes(p));
-  const presets = [...BUILT_IN, ...custom];
+  const hidden = ALL_PANELS.filter((panel) => !shown.includes(panel));
+
+  const saveSizes = useCallback((axis: "columns" | "rows", sizes: Record<string, number>) => {
+    setLayout((current) => ({ ...current, [axis]: sizes }));
+  }, []);
 
   function closePanel(id: PanelId) {
     setMaximized((m) => (m === id ? null : m));
@@ -97,9 +93,9 @@ export default function Workspace({ panels }: { panels: PanelMap }) {
       if (l.left === id) {
         // Promote the first right-column panel into the vacated left column.
         const [first, ...rest] = l.right;
-        return { left: first ?? null, right: rest };
+        return { ...l, left: first ?? null, right: rest };
       }
-      return { ...l, right: l.right.filter((p) => p !== id) };
+      return { ...l, right: l.right.filter((panel) => panel !== id) };
     });
   }
 
@@ -107,17 +103,17 @@ export default function Workspace({ panels }: { panels: PanelMap }) {
     setLayout((l) => (l.left === null ? { ...l, left: id } : { ...l, right: [...l.right, id] }));
   }
 
-  function swapPanels(a: string, b: string) {
-    const dragged = a as PanelId;
-    const target = b as PanelId;
+  function swapPanels(dragged: string, target: string) {
     setLayout((l) => {
       const order = visiblePanels(l);
-      const i = order.indexOf(dragged);
-      const j = order.indexOf(target);
-      if (i < 0 || j < 0) return l;
+      const from = order.indexOf(dragged as PanelId);
+      const to = order.indexOf(target as PanelId);
+      if (from < 0 || to < 0) return l;
       const next = [...order];
-      [next[i], next[j]] = [next[j], next[i]];
-      return l.left === null ? { left: null, right: next } : { left: next[0], right: next.slice(1) };
+      [next[from], next[to]] = [next[to], next[from]];
+      return l.left === null
+        ? { ...l, left: null, right: next }
+        : { ...l, left: next[0], right: next.slice(1) };
     });
   }
 
@@ -125,14 +121,39 @@ export default function Workspace({ panels }: { panels: PanelMap }) {
     setLayout((l) => {
       if (column === "left") {
         if (l.left === id) return l;
-        const right = l.right.filter((p) => p !== id);
-        // The displaced left panel moves to the top of the right column.
-        return { left: id, right: l.left ? [l.left, ...right] : right };
+        const right = l.right.filter((panel) => panel !== id);
+        return { ...l, left: id, right: l.left ? [l.left, ...right] : right };
       }
       if (l.left !== id) return l;
       const [first, ...rest] = l.right;
-      return { left: first ?? null, right: first ? [...rest, id] : [id] };
+      return { ...l, left: first ?? null, right: first ? [...rest, id] : [id] };
     });
+  }
+
+  async function savePreset() {
+    // Count-based naming repeats after a delete, so take the lowest free number.
+    const taken = new Set(presets.map((preset) => preset.name));
+    let n = 1;
+    while (taken.has(`My layout ${n}`)) n += 1;
+    const name = `My layout ${n}`;
+    const res = await fetch("/api/workspace/layouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, config: layout }),
+    }).catch(() => null);
+    const data = await res?.json().catch(() => ({}));
+    if (!res || !res.ok) {
+      setError(data?.error ?? "Could not save that layout.");
+      return;
+    }
+    setError(null);
+    setPresets((p) => [...p, { id: data.id, name, config: layout }]);
+  }
+
+  async function deletePreset(id: number) {
+    setPresets((p) => p.filter((preset) => preset.id !== id));
+    const res = await fetch(`/api/workspace/layouts/${id}`, { method: "DELETE" }).catch(() => null);
+    if (!res || !res.ok) setError("Could not delete that layout.");
   }
 
   function renderPanel(id: PanelId) {
@@ -147,9 +168,20 @@ export default function Workspace({ panels }: { panels: PanelMap }) {
         onToggleMaximize={() => setMaximized((m) => (m === id ? null : id))}
         onDropPanel={swapPanels}
         actions={[
-          { label: "Move to left column", onClick: () => moveToColumn(id, "left"), disabled: layout.left === id },
-          { label: "Move to right column", onClick: () => moveToColumn(id, "right"), disabled: layout.left !== id },
-          { label: maximized === id ? "Restore size" : "Expand to full workspace", onClick: () => setMaximized((m) => (m === id ? null : id)) },
+          {
+            label: "Move to left column",
+            onClick: () => moveToColumn(id, "left"),
+            disabled: layout.left === id,
+          },
+          {
+            label: "Move to right column",
+            onClick: () => moveToColumn(id, "right"),
+            disabled: layout.left !== id,
+          },
+          {
+            label: maximized === id ? "Restore size" : "Expand to full workspace",
+            onClick: () => setMaximized((m) => (m === id ? null : id)),
+          },
           { label: "Close panel", onClick: () => closePanel(id) },
         ]}
       >
@@ -158,62 +190,60 @@ export default function Workspace({ panels }: { panels: PanelMap }) {
     );
   }
 
-  const activePreset = presets.find((p) => sameLayout(p.layout, layout));
+  const allPresets = [
+    ...BUILT_IN_LAYOUTS.map((b) => ({ key: b.key, name: b.name, config: b.config, id: null })),
+    ...presets.map((p) => ({ key: `saved-${p.id}`, name: p.name, config: p.config, id: p.id })),
+  ];
+  const activeKey = allPresets.find((p) => sameArrangement(p.config, layout))?.key;
+
+  const columnIds = [
+    ...(layout.left ? ["col-left"] : []),
+    ...(layout.right.length > 0 ? ["col-right"] : []),
+  ];
+  const rowIds = layout.right.map((id) => `stack-${id}`);
 
   return (
     <div className="flex h-screen min-h-0 flex-1 flex-col">
-      {/* Saved-layout bar */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-surface px-4 py-2">
         <span className="text-[11.5px] font-medium text-ink-3">Layout</span>
-        {presets.map((p) => {
-          const active = activePreset?.id === p.id;
-          return (
-            <span key={p.id} className="group/preset relative">
+        {allPresets.map((preset) => (
+          <span key={preset.key} className="group/preset relative">
+            <button
+              onClick={() => {
+                setMaximized(null);
+                setLayout((l) => ({ ...preset.config, columns: l.columns, rows: l.rows }));
+              }}
+              className={`pill ${
+                activeKey === preset.key
+                  ? "border-accent bg-accent-soft font-semibold text-accent"
+                  : "border-line bg-surface font-medium text-ink-2 hover:bg-canvas"
+              }`}
+            >
+              {preset.name}
+            </button>
+            {preset.id !== null && (
               <button
-                onClick={() => {
-                  setMaximized(null);
-                  setLayout(p.layout);
-                }}
-                className={`pill ${
-                  active
-                    ? "border-accent bg-accent-soft font-semibold text-accent"
-                    : "border-line bg-surface font-medium text-ink-2 hover:bg-canvas"
-                }`}
+                onClick={() => deletePreset(preset.id as number)}
+                className="absolute -right-1 -top-1 hidden h-4 w-4 place-items-center rounded-full border border-line bg-surface text-[9px] text-ink-3 hover:text-ink group-hover/preset:grid"
+                aria-label={`Delete ${preset.name} layout`}
               >
-                {p.label}
+                ✕
               </button>
-              {p.custom && (
-                <button
-                  onClick={() => persistPresets(custom.filter((c) => c.id !== p.id))}
-                  className="absolute -right-1 -top-1 hidden h-4 w-4 place-items-center rounded-full border border-line bg-surface text-[9px] text-ink-3 group-hover/preset:grid hover:text-ink"
-                  aria-label={`Delete ${p.label} layout`}
-                >
-                  ✕
-                </button>
-              )}
-            </span>
-          );
-        })}
+            )}
+          </span>
+        ))}
         <button
-          onClick={() =>
-            persistPresets([
-              ...custom,
-              {
-                id: `custom-${Date.now()}`,
-                label: `My layout ${custom.length + 1}`,
-                layout,
-                custom: true,
-              },
-            ])
-          }
+          onClick={savePreset}
           className="pill border-line bg-surface font-medium text-ink-2 hover:bg-canvas"
           title="Save the current arrangement as a layout"
+          aria-label="Save current layout"
         >
           ＋
         </button>
 
         <div className="flex-1" />
 
+        {error && <span className="text-[11.5px] text-red-600">{error}</span>}
         {hidden.length === 0 ? (
           <span className="text-[11.5px] text-ink-3">All panels shown</span>
         ) : (
@@ -232,7 +262,6 @@ export default function Workspace({ panels }: { panels: PanelMap }) {
         )}
       </div>
 
-      {/* Panel canvas */}
       <div className="min-h-0 flex-1 bg-workspace p-2.5">
         {shown.length === 0 ? (
           <div className="grid h-full place-items-center rounded-panel border border-dashed border-line-strong">
@@ -243,21 +272,36 @@ export default function Workspace({ panels }: { panels: PanelMap }) {
         ) : maximized ? (
           renderPanel(maximized)
         ) : (
-          <Group orientation="horizontal" className="h-full">
+          <Group
+            orientation="horizontal"
+            className="h-full"
+            defaultLayout={pickSizes(layout.columns, columnIds)}
+            onLayoutChanged={(next, meta) => {
+              if (meta.isUserInteraction) saveSizes("columns", meta.requestedLayout ?? next);
+            }}
+          >
             {layout.left && (
-              <Panel key={`left-${layout.left}`} defaultSize="44" minSize="22" className="h-full min-h-0">
+              <Panel id="col-left" defaultSize="44" minSize="22" className="h-full min-h-0">
                 {renderPanel(layout.left)}
               </Panel>
             )}
             {layout.left && layout.right.length > 0 && <VSeparator />}
             {layout.right.length > 0 && (
-              <Panel key="right-column" defaultSize="56" minSize="24" className="h-full min-h-0">
-                <Group orientation="vertical" className="h-full">
+              <Panel id="col-right" defaultSize="56" minSize="24" className="h-full min-h-0">
+                <Group
+                  orientation="vertical"
+                  className="h-full"
+                  defaultLayout={pickSizes(layout.rows, rowIds)}
+                  onLayoutChanged={(next, meta) => {
+                    if (meta.isUserInteraction) saveSizes("rows", meta.requestedLayout ?? next);
+                  }}
+                >
                   {/* separators must be interleaved between panels, not appended */}
                   {layout.right.map((id, i) => (
                     <Fragment key={id}>
                       {i > 0 && <HSeparator />}
                       <Panel
+                        id={`stack-${id}`}
                         defaultSize={`${100 / layout.right.length}`}
                         minSize="12"
                         className="h-full min-h-0"

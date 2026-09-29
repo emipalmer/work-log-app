@@ -91,10 +91,29 @@ function createDb(): Database.Database {
       position  INTEGER NOT NULL DEFAULT 0
     );
 
+    -- ---- Workspace ----------------------------------------------------
+    -- Panel arrangement + separator positions, synced so the workspace follows
+    -- the account across devices rather than living in one browser.
+    CREATE TABLE IF NOT EXISTS user_prefs (
+      user_id          INTEGER PRIMARY KEY REFERENCES users(id),
+      workspace_layout TEXT,
+      updated_at       TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS saved_layouts (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL REFERENCES users(id),
+      name       TEXT NOT NULL,
+      config     TEXT NOT NULL,
+      position   INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_entries_user_date ON entries (user_id, date);
     CREATE INDEX IF NOT EXISTS idx_artifacts_user ON artifacts (user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_resume_entries ON resume_entries (resume_id, kind, position);
     CREATE INDEX IF NOT EXISTS idx_resume_bullets ON resume_bullets (entry_id, position);
+    CREATE INDEX IF NOT EXISTS idx_saved_layouts_user ON saved_layouts (user_id, position, id);
   `);
   return db;
 }
